@@ -1,12 +1,11 @@
 import * as mongoose from 'mongoose';
 import { Schema, Prop, SchemaFactory, AsyncModelFactory } from "@nestjs/mongoose";
 import { Document } from "mongoose";
-import * as crypto from "crypto";
+import * as bcrypt from "bcryptjs";
 import { Group } from "src/groups/groups.schema";
 import { Card } from "src/cards/cards.schema";
 
-const HASH_ITERATIONS = 1000;
-const HASH_KEYLEN = 64;
+const SALT_ROUNDS = 10;
 
 @Schema()
 export class User {
@@ -16,14 +15,13 @@ export class User {
     @Prop({ required: true })
     password: string;
 
-    @Prop({ required: false }) // salt must be set after password hashing
-    salt: string;
-
     @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Group" }] })
     subgroups: Group[];
 
     @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Card" }] })
     cards: Card[];
+
+    [x: string]: any; // for calling methods, that defined in factory
 }
 
 export type UserDocument = User & Document;
@@ -33,15 +31,36 @@ export const UserFactory: AsyncModelFactory = {
     name: User.name,
     useFactory: () => {
         const schema = UserSchema;
-        schema.pre("save", function() {
+        schema.pre("save", function(next) {
             if (this.isModified("password") || this.isNew) {
-                this.salt = crypto.randomBytes(16).toString("hex");
-                this.password = crypto.pbkdf2Sync(this.password, this.salt, HASH_ITERATIONS, HASH_KEYLEN, "sha256").toString("hex");
+                bcrypt.genSalt(SALT_ROUNDS, function(saltErr, salt) {
+                    if (saltErr) {
+                        return next(saltErr);
+                    }
+
+                    bcrypt.hash(this.password, salt, function(hashErr, hash) {
+                        if (hashErr) {
+                            return next(hashErr);
+                        }
+
+                        this.password = hash;
+                        next();
+                    })
+                })
+            } else {
+                next();
             }
         })
         schema.methods.validatePassword = function(password) {
-            const hash = crypto.pbkdf2Sync(password, this.salt, HASH_ITERATIONS, HASH_KEYLEN, "sha256").toString("hex");
-            return this.hash == hash;
+            return new Promise((res, rej) => {
+                bcrypt.compare(this.password, password, function(err, match) {
+                    if (err) {
+                        rej(err)
+                    } else {
+                        res(match)
+                    }                    
+                })
+            })
         }
         return schema;
     }

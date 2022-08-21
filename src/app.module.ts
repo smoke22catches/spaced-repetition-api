@@ -3,16 +3,15 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CardsController } from './cards/cards.controller';
-import { UserFactory } from './users/users.schema';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 require('dotenv').config();
 
-console.log(process.env.MONGO_DB_INSTANCE_URL)
 @Module({
   imports: [
     MongooseModule.forRoot(process.env.MONGO_DB_INSTANCE_URL),
-    MongooseModule.forFeatureAsync([
-      UserFactory,
-    ])
+    AuthModule,
+    UsersModule
   ],
   controllers: [AppController, CardsController],
   providers: [AppService],
