@@ -32,36 +32,35 @@ export const UserFactory: AsyncModelFactory = {
     useFactory: () => {
         const schema = UserSchema;
         schema.pre("save", function(next) {
-            if (this.isModified("password") || this.isNew) {
-                bcrypt.genSalt(SALT_ROUNDS, function(saltErr, salt) {
-                    if (saltErr) {
-                        return next(saltErr);
-                    }
+            // if (this.isModified("password") || this.isNew) {
+            //     bcrypt.hash(this.password, SALT_ROUNDS, (hashErr, hash) => {
+            //         if (hashErr) {
+            //             return next(hashErr);
+            //         }
 
-                    bcrypt.hash(this.password, salt, function(hashErr, hash) {
-                        if (hashErr) {
-                            return next(hashErr);
-                        }
+            //         this.password = hash;
+            //         next();
+            //     })
+            // } else {
+            //     next();
+            // }
 
-                        this.password = hash;
-                        next();
-                    })
-                })
-            } else {
-                next();
-            }
+            next()
         })
-        schema.methods.validatePassword = function(password) {
-            return new Promise((res, rej) => {
-                bcrypt.compare(this.password, password, function(err, match) {
-                    if (err) {
-                        rej(err)
-                    } else {
-                        res(match)
-                    }                    
-                })
-            })
-        }
         return schema;
     }
+}
+
+export function validatePassword(user, password) {
+    return new Promise((res, rej) => {
+        // bcrypt.compare(user.password, password, function(err, match) {
+        //     if (err) {
+        //         rej(err)
+        //     } else {
+        //         res(match)
+        //     }                    
+        // })
+
+        res(user.password == password);
+    })
 }

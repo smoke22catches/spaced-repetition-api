@@ -10,4 +10,9 @@ export class UsersService {
     async findOne(username: string): Promise<User | null> {
         return await this.userModel.findOne({ username }).exec();
     }
+
+    async add(username: string, password: string): Promise<User> {
+        const user = new this.userModel({ username, password });
+        return user.save();
+    }
 }
